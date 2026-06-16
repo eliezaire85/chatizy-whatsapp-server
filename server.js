@@ -73,48 +73,6 @@ function getWhatsAppClient(userNumber) {
 }
 
 // =========================
-// EVENEMENTS WHATSAPP
-// =========================
-
-client.on('qr', async (qr) => {
-console.log('QR Code généré');
-qrCodeData = await QRCode.toDataURL(qr);
-});
-
-client.on('ready', () => {
-console.log('WhatsApp connecté');
-isReady = true;
-qrCodeData = null;
-});
-
-client.on('authenticated', () => {
-console.log('Authentification réussie');
-});
-
-client.on('auth_failure', (msg) => {
-console.log('Erreur authentification :', msg);
-});
-
-client.on('disconnected', async (reason) => {
-    console.log('WhatsApp déconnecté :', reason);
-    
-    isReady = false;
-    qrCodeData = null;
-
-    try {
-        // 1. On détruit proprement l'instance actuelle du client
-        await client.destroy();
-        console.log('Session locale WhatsApp détruite avec succès.');
-    } catch (error) {
-        console.error('Erreur lors de la destruction du client :', error);
-    }
-
-    // 2. IMPORTANT : On réinitialise immédiatement le client 
-    // pour qu'il soit prêt à générer un NOUVEAU QR Code au prochain clic.
-    client.initialize();
-});
-
-// =========================
 // ROUTE STATUS
 // =========================
 
