@@ -13,21 +13,64 @@ let isReady = false;
 // INITIALISATION WHATSAPP
 // =========================
 
-const client = new Client({
-authStrategy: new LocalAuth({
-clientId: 'chatizy'
-}),
-puppeteer: {
-headless: true,
-args: [
-'--no-sandbox',
-'--disable-setuid-sandbox',
-'--disable-dev-shm-usage',
-'--disable-gpu',
-'--disable-extensions'
-]
+// 1. On remplace le client unique par un objet vide qui stockera les sessions de chaque utilisateur
+const clients = {}; 
+
+// 2. Fonction dynamique pour initialiser un client WhatsApp spécifique à un numéro
+function getWhatsAppClient(userNumber) {
+    // Si le client pour ce numéro existe déjà, on le retourne directement
+    if (clients[userNumber]) {
+        return clients[userNumber];
+    }
+
+    console.log(`Initialisation d'une nouvelle session pour le numéro : ${userNumber}`);
+
+    const client = new Client({
+        authStrategy: new LocalAuth({
+            clientId: `session-${userNumber}` // Dossier unique par utilisateur sur Railway
+        }),
+        puppeteer: {
+            headless: true,
+            args: [
+                '--no-sandbox', 
+                '--disable-setuid-sandbox', 
+                '--disable-dev-shm-usage', 
+                '--disable-gpu',
+                '--disable-extensions'
+            ]
+        }
+    });
+
+    // Initialisation des variables d'état propres à ce client
+    client.qrData = null;
+    client.isUserReady = false;
+
+    // Gestion des événements pour ce numéro spécifique
+    client.on('qr', (qr) => {
+        console.log(`Nouveau QR Code généré pour ${userNumber}`);
+        client.qrData = qr;
+    });
+
+    client.on('ready', () => {
+        console.log(`WhatsApp prêt pour le numéro : ${userNumber}`);
+        client.isUserReady = true;
+        client.qrData = null;
+    });
+
+    client.on('disconnected', async (reason) => {
+        console.log(`Numéro ${userNumber} déconnecté :`, reason);
+        try {
+            await client.destroy();
+        } catch (error) {
+            console.error('Erreur lors du destroy :', error);
+        }
+        delete clients[userNumber]; // Supprime la session pour pouvoir recommencer à zéro
+    });
+
+    client.initialize();
+    clients[userNumber] = client; // Sauvegarde du client dans notre liste globale
+    return client;
 }
-});
 
 // =========================
 // EVENEMENTS WHATSAPP
