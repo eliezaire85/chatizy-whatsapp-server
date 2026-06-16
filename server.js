@@ -77,11 +77,11 @@ function getWhatsAppClient(userNumber) {
 // =========================
 
 app.get('/', (req, res) => {
-res.json({
-success: true,
-service: 'Chatizy WhatsApp Server',
-connected: isReady
-});
+    res.json({
+        success: true,
+        service: 'Chatizy WhatsApp Server',
+        multiTenant: true
+    });
 });
 
 // =========================
@@ -89,10 +89,18 @@ connected: isReady
 // =========================
 
 app.get('/status', (req, res) => {
-res.json({
-success: true,
-connected: isReady
-});
+    const userNumber = req.query.number;
+    
+    if (!userNumber) {
+        return res.status(400).json({ success: false, error: "Le paramètre 'number' est requis." });
+    }
+
+    const userClient = clients[userNumber];
+    res.json({
+        success: true,
+        service: 'Chatizy WhatsApp Server',
+        connected: userClient ? userClient.isUserReady : false
+    });
 });
 
 // =========================
@@ -133,40 +141,37 @@ app.get('/qr', (req, res) => {
 
     // CAS 2 : Le QR Code est généré et attend d'être scanné
     if (userClient.qrData) {
-        // NOTE : Si vous utilisez une fonction spécifique (comme 'qrcode') pour afficher l'image, 
-        // remplacez la ligne ci-dessous par votre balise <img src="..."> habituelle basée sur userClient.qrData
         return res.send(`
-            <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
+            <div style="text-align:center; font-family:Arial; padding:40px;">
                 <h1>Chatizy AI</h1>
-                <h2>Scanner le QR Code</h2>
+                <h2>Connexion WhatsApp</h2>
                 <p style="font-size: 16px;">Associez votre appareil pour le numéro : <strong>+${userNumber}</strong></p>
-                
-                <div style="margin: 30px auto; padding: 10px; border: 1px solid #ccc; display: inline-block;">
-                    <p style="color:#888; font-size:12px;">[Insérez ici votre logique d'affichage d'image QR Code basées sur userClient.qrData]</p>
-                </div>
 
-                <p style="color:#777; font-size:13px;">Le code se rafraîchit automatiquement.</p>
+                <img
+                    src="${userClient.qrData}"
+                    width="320"
+                    alt="QR Code"
+                    style="margin: 20px auto; border: 1px solid #ccc; padding: 10px;"
+                />
+
+                <p>Scannez ce QR Code depuis WhatsApp sur votre téléphone.</p>
+
+                <script>
+                    setTimeout(() => {
+                        location.reload();
+                    }, 5000);
+                </script>
             </div>
         `);
     }
 
-    // CAS 3 : Initialisation de la session de l'utilisateur en arrière-plan
+    // CAS 3 : Initialisation de la session de l'utilisateur en arrière-plan (Pas encore de QR dispo)
     return res.send(`
-        <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
-            <h1>Chatizy AI</h1>
-            <h2>Génération de votre session en cours...</h2>
-            <p>Préparation du module WhatsApp pour le numéro : <strong>+${userNumber}</strong></p>
-            <p style="color:#999; font-size:14px;">La page va s'actualiser automatiquement dans quelques secondes.</p>
-            <script>setTimeout(() => { location.reload(); }, 4000);</script>
-        </div>
-    `);
-});
-
-if (!qrCodeData) {
-    return res.send(`
-        <div style="text-align:center;font-family:Arial;padding:40px;">
+        <div style="font-family:sans-serif; text-align:center; margin-top:50px; padding:40px;">
             <h1>Chatizy AI</h1>
             <h2>Génération du QR Code...</h2>
+            <p>Préparation du module WhatsApp pour le numéro : <strong>+${userNumber}</strong></p>
+            <p style="color:#999; font-size:14px;">La page va s'actualiser automatiquement dans quelques secondes.</p>
             <script>
                 setTimeout(() => {
                     location.reload();
@@ -174,30 +179,7 @@ if (!qrCodeData) {
             </script>
         </div>
     `);
-}
-
-res.send(`
-    <div style="text-align:center;font-family:Arial;padding:40px;">
-        <h1>Chatizy AI</h1>
-        <h2>Connexion WhatsApp</h2>
-
-        <img
-            src="${qrCodeData}"
-            width="320"
-            alt="QR Code"
-        />
-
-        <p>
-            Scannez ce QR Code depuis WhatsApp
-        </p>
-
-        <script>
-            setTimeout(() => {
-                location.reload();
-            }, 5000);
-        </script>
-    </div>
-`);
+});
 
 
 // =========================
