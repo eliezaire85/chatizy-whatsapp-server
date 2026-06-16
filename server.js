@@ -100,17 +100,67 @@ connected: isReady
 // =========================
 
 app.get('/qr', (req, res) => {
+    const userNumber = req.query.number; // Récupère le numéro (?number=...) envoyé par FlutterFlow
 
-if (isReady) {
+    if (!userNumber) {
+        return res.status(400).send(`
+            <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
+                <h2 style="color:#D32F2F;">Erreur de configuration</h2>
+                <p>Le paramètre de numéro (number) est manquant dans l'URL.</p>
+            </div>
+        `);
+    }
+
+    // On récupère ou crée la session WhatsApp dédiée à ce numéro spécifique
+    const userClient = getWhatsAppClient(userNumber);
+
+    // CAS 1 : WhatsApp est déjà connecté pour ce numéro
+    if (userClient.isUserReady) {
+        return res.send(`
+            <div style="font-family:sans-serif; text-align:center; margin-top:50px; padding: 20px;">
+                <div style="font-size: 60px;">✅</div>
+                <h1 style="font-family:sans-serif; color:#333;">Chatizy AI</h1>
+                <h2 style="color:green; margin-bottom: 10px;">WhatsApp déjà connecté</h2>
+                <p style="font-size: 18px; color: #555;">
+                    Le compte associé au numéro <strong>+${userNumber}</strong> est actuellement actif.
+                </p>
+                <p style="color:#666; font-size:14px; margin-top: 20px;">
+                    Vous pouvez fermer cette page en toute sécurité et retourner sur votre application.
+                </p>
+            </div>
+        `);
+    }
+
+    // CAS 2 : Le QR Code est généré et attend d'être scanné
+    if (userClient.qrData) {
+        // NOTE : Si vous utilisez une fonction spécifique (comme 'qrcode') pour afficher l'image, 
+        // remplacez la ligne ci-dessous par votre balise <img src="..."> habituelle basée sur userClient.qrData
+        return res.send(`
+            <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
+                <h1>Chatizy AI</h1>
+                <h2>Scanner le QR Code</h2>
+                <p style="font-size: 16px;">Associez votre appareil pour le numéro : <strong>+${userNumber}</strong></p>
+                
+                <div style="margin: 30px auto; padding: 10px; border: 1px solid #ccc; display: inline-block;">
+                    <p style="color:#888; font-size:12px;">[Insérez ici votre logique d'affichage d'image QR Code basées sur userClient.qrData]</p>
+                </div>
+
+                <p style="color:#777; font-size:13px;">Le code se rafraîchit automatiquement.</p>
+            </div>
+        `);
+    }
+
+    // CAS 3 : Initialisation de la session de l'utilisateur en arrière-plan
     return res.send(`
-        <div style="text-align:center;font-family:Arial;padding:40px;">
+        <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
             <h1>Chatizy AI</h1>
-            <h2 style="color:green;">
-                WhatsApp déjà connecté
-            </h2>
+            <h2>Génération de votre session en cours...</h2>
+            <p>Préparation du module WhatsApp pour le numéro : <strong>+${userNumber}</strong></p>
+            <p style="color:#999; font-size:14px;">La page va s'actualiser automatiquement dans quelques secondes.</p>
+            <script>setTimeout(() => { location.reload(); }, 4000);</script>
         </div>
     `);
-}
+});
 
 if (!qrCodeData) {
     return res.send(`
