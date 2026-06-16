@@ -199,55 +199,48 @@ res.send(`
     </div>
 `);
 
-});
 
 // =========================
 // ENVOI MESSAGE
 // =========================
 
 app.post('/send', async (req, res) => {
+    // Récupération du numéro de l'expéditeur, du destinataire et du texte
+    const { number, to, message } = req.body;
 
-try {
-
-    if (!isReady) {
-        return res.status(400).json({
-            success: false,
-            error: 'WhatsApp non connecté'
+    if (!number || !to || !message) {
+        return res.status(400).json({ 
+            success: false, 
+            error: "Paramètres manquants (number, to, et message sont requis)." 
         });
     }
 
-    let { number, message } = req.body;
+    try {
+        // Récupération de la session WhatsApp spécifique à ce numéro
+        const userClient = getWhatsAppClient(number);
 
-    if (!number || !message) {
-        return res.status(400).json({
-            success: false,
-            error: 'number et message obligatoires'
+        // On vérifie si CET utilisateur précis est connecté
+        if (!userClient || !userClient.isUserReady) {
+            return res.status(400).json({ 
+                success: false, 
+                error: `La session WhatsApp pour le numéro +${number} n'est pas connectée.` 
+            });
+        }
+
+        // Formatage du numéro de destination pour l'API WhatsApp
+        const formattedTo = to.includes('@c.us') ? to : `${to}@c.us`;
+        
+        // Envoi via l'instance isolée de l'utilisateur
+        await userClient.sendMessage(formattedTo, message);
+
+        res.json({ 
+            success: true, 
+            message: `Message envoyé avec succès depuis le numéro +${number}` 
         });
+    } catch (error) {
+        console.error(`Erreur d'envoi pour le numéro +${number}:`, error);
+        res.status(500).json({ success: false, error: error.message });
     }
-
-    number = number.replace(/\D/g, '');
-
-    const chatId = `${number}@c.us`;
-
-    await client.sendMessage(chatId, message);
-
-    return res.json({
-        success: true,
-        message: 'Message envoyé',
-        to: number
-    });
-
-} catch (error) {
-
-    console.error(error);
-
-    return res.status(500).json({
-        success: false,
-        error: error.message
-    });
-
-}
-
 });
 
 // =========================
