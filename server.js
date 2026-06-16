@@ -141,7 +141,7 @@ res.send(`
 // ENVOI MESSAGE
 // =========================
 
-app.get('/send', async (req, res) => {
+app.post('/send', async (req, res) => {
 
 try {
 
@@ -152,7 +152,7 @@ try {
         });
     }
 
-    let { number, message } = req.query;
+    let { number, message } = req.body;
 
     if (!number || !message) {
         return res.status(400).json({
