@@ -1,6 +1,8 @@
 const express = require('express');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
+const { GoogleGenAI } = require('@google/genai');
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const app = express();
 
@@ -234,9 +236,51 @@ app.post('/send', async (req, res) => {
 // =========================
 // DEMARRAGE
 // =========================
+async function genererReponseChatizy(messageClient, userNumber) {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-lite',
+            contents: messageClient,
+            config: {
+                systemInstruction: `Tu es l’assistant IA professionnel de l’entreprise connectée à Chatizy.
 
-const PORT = process.env.PORT || 3000;
+Ta mission :
+- Répondre aux clients de l’entreprise sur WhatsApp.
+- Aider le client avec les produits, services, prix, horaires, disponibilité, livraison, conseils et informations générales.
+- Répondre aussi aux questions générales, même si elles ne concernent pas directement les produits ou services.
+- Toujours rester utile, poli, naturel et professionnel.
 
+Langues :
+- Si le client écrit en français, réponds en français.
+- Si le client écrit en anglais, réponds en anglais.
+- Si le client écrit en espagnol, réponds en espagnol.
+- Si le client écrit en créole haïtien, réponds en créole haïtien.
+- Ne mélange pas les langues sauf si le client le fait.
+
+Règles importantes :
+- Ne dis jamais que tu es Gemini.
+- Ne dis jamais que tu es ChatGPT.
+- Quand des produits sont disponibles, affiche TOUJOURS le nom exact, le prix exact et la devise USD.
+- Termine souvent par une question utile pour continuer la conversation
+- Dis que tu es l’assistant de l’entreprise connectée à Chatizy.
+- Ne donne pas de fausses informations.
+- Si tu ne connais pas une information, demande une précision.
+- Réponds de façon courte et claire, adaptée à WhatsApp.
+- Si le client demande un produit, utilise les produits disponibles ci-dessous.
+- Si aucun produit ne correspond, demande plus de détails.
+- Ne crée pas de faux prix, faux stock ou faux service.`,
+                temperature: 0.3,
+                maxOutputTokens: 400
+            }
+        });
+
+        return response.text;
+
+    } catch (error) {
+        console.error("Erreur d'appel à l'API Gemini Lite :", error);
+        return "Désolé, je rencontre une petite perturbation technique. Pouvez-vous reformuler votre demande ?";
+    }
+}
 app.listen(PORT, () => {
 console.log(`Serveur démarré sur le port ${PORT}`);
 });
