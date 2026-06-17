@@ -74,6 +74,19 @@ client.on('qr', async (qr) => {
         }
         delete clients[userNumber]; // Supprime la session pour pouvoir recommencer à zéro
     });
+    
+    client.on('message', async (msg) => {
+        console.log(`[BOT ${userNumber}] Message reçu de ${msg.from} : ${msg.body}`);
+
+        try {
+            // Appelle ta fonction existante qui génère la réponse avec Gemini
+            const responseIA = await genererReponseChatizy(msg.body); 
+            await msg.reply(responseIA);
+            console.log(`[BOT ${userNumber}] Réponse IA envoyée à ${msg.from}`);
+        } catch (error) {
+            console.error(`[BOT ${userNumber}] Erreur traitement message :`, error);
+        }
+    });
 
     client.initialize();
     clients[userNumber] = client; // Sauvegarde du client dans notre liste globale
