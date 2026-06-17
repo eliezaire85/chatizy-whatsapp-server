@@ -46,10 +46,16 @@ function getWhatsAppClient(userNumber) {
     client.isUserReady = false;
 
     // Gestion des événements pour ce numéro spécifique
-    client.on('qr', (qr) => {
-        console.log(`Nouveau QR Code généré pour ${userNumber}`);
-        client.qrData = qr;
-    });
+client.on('qr', async (qr) => {
+    console.log(`Nouveau QR Code généré pour le client.`);
+    try {
+        // Transforme le texte brut en image Base64 affichable
+        const QRCode = require('qrcode');
+        client.qrData = await QRCode.toDataURL(qr);
+    } catch (err) {
+        console.error("Erreur de conversion du QR Code en image:", err);
+    }
+});
 
     client.on('ready', () => {
         console.log(`WhatsApp prêt pour le numéro : ${userNumber}`);
