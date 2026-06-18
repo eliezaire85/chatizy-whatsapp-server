@@ -246,11 +246,43 @@ app.post('/send', async (req, res) => {
     }
 });
 
-// =========================
-// DEMARRAGE
-// =========================
+// =======================================================
+//   FONCTION DE GÉNÉRATION GEMINI DYNAMIQUE (CATALOGUE)
+// =======================================================
 async function genererReponseChatizy(messageClient, userNumber) {
     try {
+        let catalogueTexte = "";
+
+        try {
+            // 1. Récupération des produits de l'entreprise dans Firestore
+            // On cherche dans la collection 'products' où 'userId' (ou 'userNumber') correspond au numéro connecté
+            // ET on filtre uniquement les produits disponibles (available == true)
+            const productsSnapshot = await db.collection('products')
+                .where('userNumber', '==', userNumber)
+                .where('available', '==', true)
+                .get();
+
+            if (!productsSnapshot.empty) {
+                catalogueTexte = "Voici les produits actuellement disponibles dans notre boutique :\n\n";
+                
+                productsSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    // On extrait le nom et le prix saisis dans vos formulaires FlutterFlow
+                    const nom = data.product_name || "Produit sans nom";
+                    const prix = data.price || "Sur devis";
+                    
+                    catalogueTexte += `- **Nom exact :** ${nom}\n  **Prix exact :** ${prix} USD\n\n`;
+                });
+            } else {
+                catalogueTexte = "Aucun produit n'est actuellement disponible dans le catalogue de cette entreprise.";
+            }
+
+        } catch (dbError) {
+            console.error("Erreur lors de la lecture des produits Firestore :", dbError);
+            catalogueTexte = "Le catalogue est momentanément indisponible. Reste poli.";
+        }
+
+        // 2. Appel à Gemini avec le catalogue généré en temps réel
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-lite',
             contents: messageClient,
@@ -258,31 +290,32 @@ async function genererReponseChatizy(messageClient, userNumber) {
                 systemInstruction: `Tu es l’assistant IA professionnel de l’entreprise connectée à Chatizy.
 
 Ta mission :
-- Répondre aux clients de l’entreprise sur WhatsApp.
-- Aider le client avec les produits, services, prix, horaires, disponibilité, livraison, conseils et informations générales.
-- Répondre aussi aux questions générales, même si elles ne concernent pas directement les produits ou services.
-- Toujours rester utile, poli, naturel et professionnel.
+- Répondre aux clients de l’entreprise sur WhatsApp de manière naturelle, fluide et chaleureuse.
+- Tu as deux rôles principaux :
+  1. Si le client pose une question sur les produits, services, prix ou stocks, sers-toi STRICTEMENT de la liste fournie ci-dessous.
+  2. Si le client pose une question générale (horaires, salutations, conseils, ou toute autre question de discussion), utilise tes connaissances générales pour lui répondre avec politesse et expertise, toujours au nom de l'entreprise.
+
+=========================================
+PRODUITS DISPONIBLES DANS L'ENTREPRISE :
+=========================================
+${catalogueTexte}
+=========================================
 
 Langues :
 - Si le client écrit en français, réponds en français.
 - Si le client écrit en anglais, réponds en anglais.
 - Si le client écrit en espagnol, réponds en espagnol.
 - Si le client écrit en créole haïtien, réponds en créole haïtien.
-- Ne mélange pas les langues sauf si le client le fait.
 
 Règles importantes :
-- Ne dis jamais que tu es Gemini.
-- Ne dis jamais que tu es ChatGPT.
-- Quand des produits sont disponibles, affiche TOUJOURS le nom exact, le prix exact et la devise USD.
-- Termine souvent par une question utile pour continuer la conversation
+- Ne dis jamais que tu es Gemini ou ChatGPT.
 - Dis que tu es l’assistant de l’entreprise connectée à Chatizy.
-- Ne donne pas de fausses informations.
-- Si tu ne connais pas une information, demande une précision.
-- Réponds de façon courte et claire, adaptée à WhatsApp.
-- Si le client demande un produit, utilise les produits disponibles ci-dessous.
-- Si aucun produit ne correspond, demande plus de détails.
-- Ne crée pas de faux prix, faux stock ou faux service.`,
-                temperature: 0.3,
+- Quand un produit est disponible, affiche TOUJOURS son nom exact, son prix exact et la devise USD (ex: 20 USD).
+- Si le client demande un produit qui n'est pas listé ou indisponible, demande des détails ou propose une alternative.
+- Réponds de façon courte, aérée et claire, adaptée à WhatsApp.
+- Termine souvent par une question utile pour continuer la conversation.`,
+                
+                temperature: 0.2, // Température basse pour éviter toute invention de prix
                 maxOutputTokens: 400
             }
         });
@@ -290,7 +323,7 @@ Règles importantes :
         return response.text;
 
     } catch (error) {
-        console.error("Erreur d'appel à l'API Gemini Lite :", error);
+        console.error("Erreur globale dans la génération de réponse :", error);
         return "Désolé, je rencontre une petite perturbation technique. Pouvez-vous reformuler votre demande ?";
     }
 }
