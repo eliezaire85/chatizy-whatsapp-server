@@ -28,20 +28,26 @@ function getWhatsAppClient(userNumber) {
     console.log(`Initialisation d'une nouvelle session pour le numéro : ${userNumber}`);
 
     const client = new Client({
-        authStrategy: new LocalAuth({
-            clientId: `session-${userNumber}` // Dossier unique par utilisateur sur Railway
-        }),
-        puppeteer: {
-            headless: true,
-            args: [
-                '--no-sandbox', 
-                '--disable-setuid-sandbox', 
-                '--disable-dev-shm-usage', 
-                '--disable-gpu',
-                '--disable-extensions'
-            ]
-        }
-    });
+    authStrategy: new LocalAuth({
+        clientId: `session-${userNumber}` // Dossier de session par utilisateur
+    }),
+    puppeteer: {
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-extensions',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process' // Option cruciale pour économiser la RAM sur Railway
+        ],
+        protocolTimeout: 60000 // Force Puppeteer à attendre 60s (Régle votre erreur)
+    },
+    authTimeoutMs: 60000, // Laisse 60s à WhatsApp Web pour s'initialiser
+    qrMaxRetries: 5
+});
 
     // Initialisation des variables d'état propres à ce client
     client.qrData = null;
