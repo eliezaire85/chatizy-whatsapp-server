@@ -260,8 +260,14 @@ async function genererReponseChatizy(messageClient, userNumber) {
         // --- INITIALISATION DE FIREBASE ADMIN POUR FIRESTORE ---
         const admin = require('firebase-admin');
         if (!admin.apps.length) {
+            let credentialConfig;
+            try {
+                credentialConfig = admin.credential.cert(require('./serviceAccountKey.json'));
+            } catch (e) {
+                credentialConfig = admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT));
+            }
             admin.initializeApp({
-                credential: admin.credential.cert(require('./serviceAccountKey.json'))
+                credential: credentialConfig
             });
         }
         const db = admin.firestore();
